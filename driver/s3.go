@@ -4,13 +4,17 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"strings"
 
+	"gopkg.in/yaml.v2"
+
+	"github.com/adammck/venv"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/blang/semver"
-	"github.com/pivotalservices/pipeline-status-resource/version"
+	"github.com/pivotalservices/pipeline-status-resource/models"
+	"github.com/pivotalservices/pipeline-status-resource/state"
 )
 
 type Servicer interface {
@@ -19,99 +23,158 @@ type Servicer interface {
 }
 
 type S3Driver struct {
-	InitialVersion semver.Version
+	InitialVersion string
 
+	Env                  venv.Env
 	Svc                  Servicer
 	BucketName           string
 	Key                  string
 	ServerSideEncryption string
 }
 
-func (driver *S3Driver) Bump(bump version.Bump) (semver.Version, error) {
-	var currentVersion semver.Version
+func (driver *S3Driver) Start() (status *models.PipelineStatus, err error) {
+	pipelineName := driver.Env.Getenv("BUILD_PIPELINE_NAME")
+	teamName := driver.Env.Getenv("BUILD_TEAM_NAME")
 
-	resp, err := driver.Svc.GetObject(&s3.GetObjectInput{
-		Bucket: aws.String(driver.BucketName),
-		Key:    aws.String(driver.Key),
-	})
+	status = &models.PipelineStatus{}
+	err = driver.load(status)
 	if err == nil {
-		bucketNumberPayload, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			return semver.Version{}, err
-		}
-		defer resp.Body.Close()
+		if status.Pipeline != pipelineName {
+			err = fmt.Errorf("State file is already associated with pipeline %s but is trying to be associated with pipeline %s",
+				status.Pipeline, pipelineName)
 
-		payloadStr := strings.TrimSpace(string(bucketNumberPayload))
-		currentVersion, err = semver.Parse(payloadStr)
-		if err != nil {
-			return semver.Version{}, err
+			return nil, err
+		}
+
+		if status.Team != teamName {
+			err = fmt.Errorf("State file is already associated with team %s but is trying to be associated with tea, %s",
+				status.Team, teamName)
+
+			return nil, err
 		}
 	} else if s3err, ok := err.(awserr.RequestFailure); ok && s3err.StatusCode() == 404 {
-		currentVersion = driver.InitialVersion
+		status = &models.PipelineStatus{}
+		status.Pipeline = pipelineName
+		status.Team = teamName
+		status.BuildNumber = driver.InitialVersion
 	} else {
-		return semver.Version{}, err
+		status = nil
 	}
 
-	newVersion := bump.Apply(currentVersion)
-
-	err = driver.Set(newVersion)
-	if err != nil {
-		return semver.Version{}, err
-	}
-
-	return newVersion, nil
+	driver.changeAndPersistState(status, models.StateRunning, nil)
+	return
 }
 
-func (driver *S3Driver) Set(newVersion semver.Version) error {
-	params := &s3.PutObjectInput{
-		Bucket:      aws.String(driver.BucketName),
-		Key:         aws.String(driver.Key),
-		ContentType: aws.String("text/plain"),
-		Body:        bytes.NewReader([]byte(newVersion.String())),
-		ACL:         aws.String(s3.ObjectCannedACLPrivate),
-	}
-
-	if len(driver.ServerSideEncryption) > 0 {
-		params.ServerSideEncryption = aws.String(driver.ServerSideEncryption)
-	}
-
-	_, err := driver.Svc.PutObject(params)
-	return err
-}
-
-func (driver *S3Driver) Check(cursor *semver.Version) ([]semver.Version, error) {
-	var bucketNumber string
-
+func (driver *S3Driver) load(status *models.PipelineStatus) error {
 	resp, err := driver.Svc.GetObject(&s3.GetObjectInput{
 		Bucket: aws.String(driver.BucketName),
 		Key:    aws.String(driver.Key),
 	})
-	if err == nil {
-		bucketNumberPayload, err := ioutil.ReadAll(resp.Body)
+
+	if resp != nil && err == nil {
+		var statusYaml []byte
+		statusYaml, err = ioutil.ReadAll(resp.Body)
 		if err != nil {
-			return []semver.Version{}, err
+			return err
 		}
+
 		defer resp.Body.Close()
 
-		bucketNumber = string(bucketNumberPayload)
-	} else if s3err, ok := err.(awserr.RequestFailure); ok && s3err.StatusCode() == 404 {
-		if cursor == nil {
-			return []semver.Version{driver.InitialVersion}, nil
+		err = yaml.Unmarshal(statusYaml, status)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (driver *S3Driver) Finish() (status *models.PipelineStatus, err error) {
+	return driver.makeReady(nil)
+}
+
+func (driver *S3Driver) Fail() (status *models.PipelineStatus, err error) {
+	failure := &models.BuildFailure{}
+
+	failure.JobName = os.Getenv("BUILD_JOB_NAME")
+	failure.BuildName = os.Getenv("BUILD_NAME")
+	failure.DetailsURL = fmt.Sprintf("%s/teams/%s/pipelines/%s/jobs/%s/builds/%s",
+		os.Getenv("ATC_EXTERNAL_URL"),
+		os.Getenv("BUILD_TEAM_NAME"),
+		os.Getenv("BUILD_PIPELINE_NAME"),
+		os.Getenv("BUILD_JOB_NAME"),
+		os.Getenv("BUILD_NAME"))
+
+	return driver.makeReady(failure)
+}
+
+func (driver *S3Driver) makeReady(failure *models.BuildFailure) (status *models.PipelineStatus, err error) {
+	status = &models.PipelineStatus{}
+	err = driver.load(status)
+	if err == nil {
+		if ok, err := driver.changeAndPersistState(status, models.StateReady, failure); ok {
+			return status, err
+		}
+	}
+
+	return nil, err
+}
+
+func (driver *S3Driver) changeAndPersistState(status *models.PipelineStatus,
+	pipelineState models.PipelineState,
+	failure *models.BuildFailure) (ok bool, err error) {
+
+	if status != nil && err == nil {
+		status.Failure = failure
+		status, err = state.ChangeState(status, pipelineState, nil)
+
+		if err == nil {
+			outputYaml, marshalError := yaml.Marshal(status)
+			if marshalError != nil {
+				err = marshalError
+			}
+
+			if err == nil {
+				params := &s3.PutObjectInput{
+					Bucket:      aws.String(driver.BucketName),
+					Key:         aws.String(driver.Key),
+					ContentType: aws.String("text/plain"),
+					Body:        bytes.NewReader(outputYaml),
+					ACL:         aws.String(s3.ObjectCannedACLPrivate),
+				}
+
+				if len(driver.ServerSideEncryption) > 0 {
+					params.ServerSideEncryption = aws.String(driver.ServerSideEncryption)
+				}
+
+				_, err = driver.Svc.PutObject(params)
+			}
+		}
+	} else {
+		err = fmt.Errorf("status was nil")
+	}
+
+	ok = (err == nil)
+	return
+}
+
+func (driver *S3Driver) Check(cursor string) ([]string, error) {
+	status := &models.PipelineStatus{}
+	err := driver.load(status)
+
+	if err == nil {
+		if strings.Compare(status.BuildNumber, cursor) > 0 {
+			return []string{status.BuildNumber}, nil
 		} else {
-			return []semver.Version{}, nil
+			return []string{}, nil
+		}
+	} else if s3err, ok := err.(awserr.RequestFailure); ok && s3err.StatusCode() == 404 {
+		if cursor == "" {
+			return []string{driver.InitialVersion}, nil
+		} else {
+			return []string{}, nil
 		}
 	} else {
 		return nil, err
 	}
-
-	bucketVersion, err := semver.Parse(bucketNumber)
-	if err != nil {
-		return nil, fmt.Errorf("parsing number in bucket: %s", err)
-	}
-
-	if cursor == nil || bucketVersion.GTE(*cursor) {
-		return []semver.Version{bucketVersion}, nil
-	}
-
-	return []semver.Version{}, nil
 }
