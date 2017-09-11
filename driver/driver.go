@@ -3,6 +3,7 @@ package driver
 import (
 	"fmt"
 
+	"github.com/adammck/venv"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -20,7 +21,7 @@ type Driver interface {
 const maxRetries = 12
 
 func FromSource(source models.Source) (Driver, error) {
-	var initialVersion string
+	initialVersion := source.InitialVersion
 
 	switch source.Driver {
 	case models.DriverUnspecified, models.DriverS3:
@@ -54,6 +55,7 @@ func FromSource(source models.Source) (Driver, error) {
 		return &S3Driver{
 			InitialVersion: initialVersion,
 
+			Env:                  venv.OS(),
 			Svc:                  svc,
 			BucketName:           source.Bucket,
 			Key:                  source.Key,

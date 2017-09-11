@@ -65,6 +65,51 @@ func (driver *S3Driver) Start() (status *models.PipelineStatus, err error) {
 	return
 }
 
+func (driver *S3Driver) Finish() (status *models.PipelineStatus, err error) {
+	return driver.makeReady(nil)
+}
+
+func (driver *S3Driver) Fail() (status *models.PipelineStatus, err error) {
+	failure := &models.BuildFailure{}
+
+	failure.JobName = os.Getenv("BUILD_JOB_NAME")
+	failure.BuildName = os.Getenv("BUILD_NAME")
+	failure.DetailsURL = fmt.Sprintf("%s/teams/%s/pipelines/%s/jobs/%s/builds/%s",
+		os.Getenv("ATC_EXTERNAL_URL"),
+		os.Getenv("BUILD_TEAM_NAME"),
+		os.Getenv("BUILD_PIPELINE_NAME"),
+		os.Getenv("BUILD_JOB_NAME"),
+		os.Getenv("BUILD_NAME"))
+
+	return driver.makeReady(failure)
+}
+
+func (driver *S3Driver) Check(cursor string) ([]string, error) {
+	status := &models.PipelineStatus{}
+	err := driver.load(status)
+
+	versions := make([]string, 0, 1)
+
+	if err == nil {
+		switch status.State {
+		case "":
+			if cursor == "" {
+				if driver.InitialVersion != "" {
+					versions = append(versions, driver.InitialVersion)
+				} else {
+					versions = append(versions, "1")
+				}
+			}
+		case models.StateReady:
+			if strings.Compare(status.BuildNumber, cursor) >= 0 {
+				versions = append(versions, status.BuildNumber)
+			}
+		}
+	}
+
+	return versions, err
+}
+
 func (driver *S3Driver) load(status *models.PipelineStatus) error {
 	resp, err := driver.Svc.GetObject(&s3.GetObjectInput{
 		Bucket: aws.String(driver.BucketName),
@@ -87,25 +132,6 @@ func (driver *S3Driver) load(status *models.PipelineStatus) error {
 	}
 
 	return nil
-}
-
-func (driver *S3Driver) Finish() (status *models.PipelineStatus, err error) {
-	return driver.makeReady(nil)
-}
-
-func (driver *S3Driver) Fail() (status *models.PipelineStatus, err error) {
-	failure := &models.BuildFailure{}
-
-	failure.JobName = os.Getenv("BUILD_JOB_NAME")
-	failure.BuildName = os.Getenv("BUILD_NAME")
-	failure.DetailsURL = fmt.Sprintf("%s/teams/%s/pipelines/%s/jobs/%s/builds/%s",
-		os.Getenv("ATC_EXTERNAL_URL"),
-		os.Getenv("BUILD_TEAM_NAME"),
-		os.Getenv("BUILD_PIPELINE_NAME"),
-		os.Getenv("BUILD_JOB_NAME"),
-		os.Getenv("BUILD_NAME"))
-
-	return driver.makeReady(failure)
 }
 
 func (driver *S3Driver) makeReady(failure *models.BuildFailure) (status *models.PipelineStatus, err error) {
@@ -156,25 +182,4 @@ func (driver *S3Driver) changeAndPersistState(status *models.PipelineStatus,
 
 	ok = (err == nil)
 	return
-}
-
-func (driver *S3Driver) Check(cursor string) ([]string, error) {
-	status := &models.PipelineStatus{}
-	err := driver.load(status)
-
-	if err == nil {
-		if strings.Compare(status.BuildNumber, cursor) > 0 {
-			return []string{status.BuildNumber}, nil
-		} else {
-			return []string{}, nil
-		}
-	} else if s3err, ok := err.(awserr.RequestFailure); ok && s3err.StatusCode() == 404 {
-		if cursor == "" {
-			return []string{driver.InitialVersion}, nil
-		} else {
-			return []string{}, nil
-		}
-	} else {
-		return nil, err
-	}
 }
