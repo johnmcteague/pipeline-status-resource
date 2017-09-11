@@ -102,6 +102,21 @@ type MetadataField struct {
 	Value string `json:"value"`
 }
 
+type BuildFailure struct {
+	JobName    string `yaml:"job"`
+	BuildName  string `yaml:"build"`
+	DetailsURL string `yaml:"details"`
+}
+
+type PipelineStatus struct {
+	Pipeline     string        `yaml:"pipeline"`
+	Team         string        `yaml:"team"`
+	BuildNumber  string        `yaml:"build"`
+	LastModified string        `yaml:"last_modified"`
+	State        PipelineState `yaml:"state"`
+	Failure      *BuildFailure `yaml:"failure,omitempty"`
+}
+
 type Driver string
 
 const (
@@ -110,4 +125,11 @@ const (
 	DriverGit         Driver = "git"
 	DriverSwift       Driver = "swift"
 	DriverGCS         Driver = "gcs"
+)
+
+type PipelineState string
+
+const (
+	StateReady   PipelineState = "READY"
+	StateRunning PipelineState = "RUNNING"
 )
