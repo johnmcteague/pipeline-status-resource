@@ -3,6 +3,7 @@ package main_test
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -13,12 +14,20 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/pivotalservices/pipeline-status-resource/models"
 	"github.com/nu7hatch/gouuid"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
+	"github.com/pivotalservices/pipeline-status-resource/models"
 )
+
+var yamlFormat string = `
+---
+team: test
+pipeline: test
+build: %s
+state: %s
+last_modified: 20702-18T04:56:00`
 
 var _ = Describe("Check", func() {
 	var key string
@@ -103,12 +112,13 @@ var _ = Describe("Check", func() {
 			Expect(err).NotTo(HaveOccurred())
 		})
 
-		putVersion := func(version string) {
+		putStatus := func(build string, state models.PipelineState) {
+			yaml := fmt.Sprintf(yamlFormat, build, state)
 			_, err := svc.PutObject(&s3.PutObjectInput{
 				Bucket:      aws.String(bucketName),
 				Key:         aws.String(key),
 				ContentType: aws.String("text/plain"),
-				Body:        bytes.NewReader([]byte(version)),
+				Body:        bytes.NewReader([]byte(yaml)),
 				ACL:         aws.String(s3.ObjectCannedACLPrivate),
 			})
 			Expect(err).NotTo(HaveOccurred())
@@ -121,24 +131,24 @@ var _ = Describe("Check", func() {
 
 			Context("when a version is present in the source", func() {
 				BeforeEach(func() {
-					putVersion("1.2.3")
+					putStatus("123", models.StateReady)
 				})
 
 				It("returns the version present at the source", func() {
 					Expect(response).To(HaveLen(1))
-					Expect(response[0].Number).To(Equal("1.2.3"))
+					Expect(response[0].Number).To(Equal("123"))
 				})
 			})
 
 			Context("when no version is present at the source", func() {
 				Context("and an initial version is set", func() {
 					BeforeEach(func() {
-						request.Source.InitialVersion = "10.9.8"
+						request.Source.InitialVersion = "1098"
 					})
 
 					It("returns the initial version", func() {
 						Expect(response).To(HaveLen(1))
-						Expect(response[0].Number).To(Equal("10.9.8"))
+						Expect(response[0].Number).To(Equal("1098"))
 					})
 				})
 
@@ -147,9 +157,9 @@ var _ = Describe("Check", func() {
 						request.Source.InitialVersion = ""
 					})
 
-					It("returns the initial version as 0.0.0", func() {
+					It("returns the initial version as 1", func() {
 						Expect(response).To(HaveLen(1))
-						Expect(response[0].Number).To(Equal("0.0.0"))
+						Expect(response[0].Number).To(Equal("1"))
 					})
 				})
 			})
@@ -157,7 +167,7 @@ var _ = Describe("Check", func() {
 
 		Context("with a version present", func() {
 			BeforeEach(func() {
-				request.Version.Number = "1.2.3"
+				request.Version.Number = "123"
 			})
 
 			Context("when there is no current version", func() {
@@ -168,23 +178,23 @@ var _ = Describe("Check", func() {
 
 			Context("when the source has a higher version", func() {
 				BeforeEach(func() {
-					putVersion("1.2.4")
+					putStatus("124", models.StateReady)
 				})
 
 				It("returns the version present at the source", func() {
 					Expect(response).To(HaveLen(1))
-					Expect(response[0].Number).To(Equal("1.2.4"))
+					Expect(response[0].Number).To(Equal("124"))
 				})
 			})
 
 			Context("when it's the same as the current version", func() {
 				BeforeEach(func() {
-					putVersion("1.2.3")
+					putStatus("123", models.StateReady)
 				})
 
 				It("returns the version present at the source", func() {
 					Expect(response).To(HaveLen(1))
-					Expect(response[0].Number).To(Equal("1.2.3"))
+					Expect(response[0].Number).To(Equal("123"))
 				})
 			})
 		})

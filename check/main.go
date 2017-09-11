@@ -3,9 +3,9 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"os"
 
-	"github.com/blang/semver"
 	"github.com/pivotalservices/pipeline-status-resource/driver"
 	"github.com/pivotalservices/pipeline-status-resource/models"
 )
@@ -17,22 +17,20 @@ func main() {
 		fatal("reading request", err)
 	}
 
+	if request.Source.Debug {
+		if tmpFile, err := ioutil.TempFile("/tmp", "checkdbg"); err == nil {
+			json.NewEncoder(tmpFile).Encode(request)
+		} else {
+			fmt.Fprintf(os.Stderr, "Error writing debug output: %v\n", err)
+		}
+	}
+
 	driver, err := driver.FromSource(request.Source)
 	if err != nil {
 		fatal("constructing driver", err)
 	}
 
-	var cursor *semver.Version
-	if request.Version.Number != "" {
-		v, err := semver.Parse(request.Version.Number)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "skipping invalid current version: %s", err)
-		} else {
-			cursor = &v
-		}
-	}
-
-	versions, err := driver.Check(cursor)
+	versions, err := driver.Check(request.Version.Number)
 	if err != nil {
 		fatal("checking for new versions", err)
 	}
@@ -40,7 +38,7 @@ func main() {
 	delta := models.CheckResponse{}
 	for _, v := range versions {
 		delta = append(delta, models.Version{
-			Number: v.String(),
+			Number: v,
 		})
 	}
 
