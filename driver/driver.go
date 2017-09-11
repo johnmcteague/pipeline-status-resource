@@ -8,8 +8,8 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/blang/semver"
-	"github.com/concourse/semver-resource/models"
-	"github.com/concourse/semver-resource/version"
+	"github.com/pivotalservices/pipeline-status-resource/models"
+	"github.com/pivotalservices/pipeline-status-resource/version"
 )
 
 type Driver interface {
@@ -71,35 +71,38 @@ func FromSource(source models.Source) (Driver, error) {
 			ServerSideEncryption: source.ServerSideEncryption,
 		}, nil
 
-	case models.DriverGit:
-		return &GitDriver{
-			InitialVersion: initialVersion,
+		/*
+			THESE ARE CURRENTLY UNSUPPORTED
 
-			URI:        source.URI,
-			Branch:     source.Branch,
-			PrivateKey: source.PrivateKey,
-			Username:   source.Username,
-			Password:   source.Password,
-			File:       source.File,
-			GitUser:    source.GitUser,
-		}, nil
+			case models.DriverGit:
+				return &GitDriver{
+					InitialVersion: initialVersion,
 
-	case models.DriverSwift:
-		return NewSwiftDriver(&source)
+					URI:        source.URI,
+					Branch:     source.Branch,
+					PrivateKey: source.PrivateKey,
+					Username:   source.Username,
+					Password:   source.Password,
+					File:       source.File,
+					GitUser:    source.GitUser,
+				}, nil
 
-	case models.DriverGCS:
-		servicer := &GCSIOServicer{
-			JSONCredentials: source.JSONKey,
-		}
+			case models.DriverSwift:
+				return NewSwiftDriver(&source)
 
-		return &GCSDriver{
-			InitialVersion: initialVersion,
+			case models.DriverGCS:
+				servicer := &GCSIOServicer{
+					JSONCredentials: source.JSONKey,
+				}
 
-			Servicer:   servicer,
-			BucketName: source.Bucket,
-			Key:        source.Key,
-		}, nil
+				return &GCSDriver{
+					InitialVersion: initialVersion,
 
+					Servicer:   servicer,
+					BucketName: source.Bucket,
+					Key:        source.Key,
+				}, nil
+		*/
 	default:
 		return nil, fmt.Errorf("unknown driver: %s", source.Driver)
 	}

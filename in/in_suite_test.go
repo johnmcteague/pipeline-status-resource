@@ -24,7 +24,7 @@ var _ = BeforeSuite(func() {
 	Expect(bucketName).NotTo(BeEmpty(), "must specify $SEMVER_TESTING_BUCKET")
 	Expect(regionName).NotTo(BeEmpty(), "must specify $SEMVER_TESTING_REGION")
 
-	inPath, err = gexec.Build("github.com/concourse/semver-resource/in")
+	inPath, err = gexec.Build("github.com/pivotalservices/pipeline-status-resource/in")
 	Expect(err).NotTo(HaveOccurred())
 })
 

@@ -8,8 +8,8 @@ import (
 
 	"github.com/blang/semver"
 
-	"github.com/concourse/semver-resource/models"
-	"github.com/concourse/semver-resource/version"
+	"github.com/pivotalservices/pipeline-status-resource/models"
+	"github.com/pivotalservices/pipeline-status-resource/version"
 )
 
 func main() {
