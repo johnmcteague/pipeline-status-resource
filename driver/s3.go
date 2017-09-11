@@ -100,7 +100,7 @@ func (driver *S3Driver) Check(cursor string) ([]string, error) {
 					versions = append(versions, "1")
 				}
 			}
-		case models.StateReady:
+		default:
 			if strings.Compare(status.BuildNumber, cursor) >= 0 {
 				versions = append(versions, status.BuildNumber)
 			}
