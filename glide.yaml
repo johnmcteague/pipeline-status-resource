@@ -1,0 +1,30 @@
+package: github.com/pivotalservices/pipeline-status-resource
+import:
+- package: cloud.google.com/go
+  subpackages:
+  - storage
+- package: github.com/aws/aws-sdk-go
+  subpackages:
+  - aws
+  - aws/awserr
+  - aws/credentials
+  - aws/session
+  - service/s3
+- package: github.com/blang/semver
+- package: github.com/rackspace/gophercloud
+  subpackages:
+  - openstack
+  - openstack/objectstorage/v1/containers
+  - openstack/objectstorage/v1/objects
+- package: google.golang.org/api
+  subpackages:
+  - option
+testImport:
+- package: github.com/nu7hatch/gouuid
+- package: github.com/onsi/ginkgo
+  subpackages:
+  - config
+- package: github.com/onsi/gomega
+  subpackages:
+  - gbytes
+  - gexec

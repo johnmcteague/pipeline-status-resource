@@ -10,7 +10,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/blang/semver"
-	"github.com/concourse/semver-resource/version"
+	"github.com/pivotalservices/pipeline-status-resource/version"
 )
 
 type Servicer interface {
