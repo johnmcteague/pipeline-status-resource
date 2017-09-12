@@ -1,5 +1,7 @@
 package models
 
+import "time"
+
 type Version struct {
 	Number string `json:"number"`
 }
@@ -15,10 +17,7 @@ type InResponse struct {
 	Metadata Metadata `json:"metadata"`
 }
 
-type InParams struct {
-	Bump string `json:"bump"`
-	Pre  string `json:"pre"`
-}
+type InParams struct{}
 
 type OutRequest struct {
 	Source  Source    `json:"source"`
@@ -46,10 +45,11 @@ type CheckRequest struct {
 type CheckResponse []Version
 
 type Source struct {
-	Debug  bool   `json:"debug"`
-	Driver Driver `json:"driver"`
-
+	Debug          bool   `json:"debug"`
+	Driver         Driver `json:"driver"`
 	InitialVersion string `json:"initial_version"`
+	RequireReady   bool   `json:"require_ready"`
+	RetryAfter     string `json:"retry_after"`
 
 	Bucket               string `json:"bucket"`
 	Key                  string `json:"key"`
@@ -133,4 +133,8 @@ type PipelineState string
 const (
 	StateReady   PipelineState = "READY"
 	StateRunning PipelineState = "RUNNING"
+)
+
+const (
+	DefaultRetryPeriod time.Duration = 1 * time.Minute
 )

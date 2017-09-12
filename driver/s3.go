@@ -37,7 +37,7 @@ func (driver *S3Driver) Start() (status *models.PipelineStatus, err error) {
 	teamName := driver.Env.Getenv("BUILD_TEAM_NAME")
 
 	status = &models.PipelineStatus{}
-	err = driver.load(status)
+	err = driver.Load(status)
 	if err == nil {
 		if status.Pipeline != pipelineName {
 			err = fmt.Errorf("State file is already associated with pipeline %s but is trying to be associated with pipeline %s",
@@ -86,7 +86,7 @@ func (driver *S3Driver) Fail() (status *models.PipelineStatus, err error) {
 
 func (driver *S3Driver) Check(cursor string) ([]string, error) {
 	status := &models.PipelineStatus{}
-	err := driver.load(status)
+	err := driver.Load(status)
 
 	versions := make([]string, 0, 1)
 
@@ -110,7 +110,7 @@ func (driver *S3Driver) Check(cursor string) ([]string, error) {
 	return versions, err
 }
 
-func (driver *S3Driver) load(status *models.PipelineStatus) error {
+func (driver *S3Driver) Load(status *models.PipelineStatus) error {
 	resp, err := driver.Svc.GetObject(&s3.GetObjectInput{
 		Bucket: aws.String(driver.BucketName),
 		Key:    aws.String(driver.Key),
@@ -136,7 +136,7 @@ func (driver *S3Driver) load(status *models.PipelineStatus) error {
 
 func (driver *S3Driver) makeReady(failure *models.BuildFailure) (status *models.PipelineStatus, err error) {
 	status = &models.PipelineStatus{}
-	err = driver.load(status)
+	err = driver.Load(status)
 	if err == nil {
 		if ok, err := driver.changeAndPersistState(status, models.StateReady, failure); ok {
 			return status, err
