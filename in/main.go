@@ -3,13 +3,14 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"os"
-	"path/filepath"
+	"path"
 
-	"github.com/blang/semver"
+	"gopkg.in/yaml.v2"
 
+	"github.com/pivotalservices/pipeline-status-resource/driver"
 	"github.com/pivotalservices/pipeline-status-resource/models"
-	"github.com/pivotalservices/pipeline-status-resource/version"
 )
 
 func main() {
@@ -31,31 +32,26 @@ func main() {
 		fatal("reading request", err)
 	}
 
-	inputVersion, err := semver.Parse(request.Version.Number)
+	driver, err := driver.FromSource(request.Source)
 	if err != nil {
-		fatal("parsing semantic version", err)
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
 	}
 
-	bumped := version.BumpFromParams(request.Params.Bump, request.Params.Pre).Apply(inputVersion)
-
-	if !bumped.Equals(inputVersion) {
-		fmt.Fprintf(os.Stderr, "bumped locally from %s to %s\n", inputVersion, bumped)
+	status := &models.PipelineStatus{}
+	err = driver.Load(status)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
 	}
 
-	versionFileNames := []string{"number", "version"}
+	fileName := path.Join(destination, "status")
 
-	for _, fileName := range versionFileNames {
-		numberFile, err := os.Create(filepath.Join(destination, fileName))
-		if err != nil {
-			fatal("opening number file", err)
-		}
-
-		defer numberFile.Close()
-
-		_, err = fmt.Fprintf(numberFile, "%s", bumped.String())
-		if err != nil {
-			fatal("writing to number file", err)
-		}
+	if data, err := yaml.Marshal(status); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	} else {
+		ioutil.WriteFile(fileName, data, 0644)
 	}
 
 	json.NewEncoder(os.Stdout).Encode(models.InResponse{

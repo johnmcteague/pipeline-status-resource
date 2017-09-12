@@ -1,23 +1,25 @@
 package main_test
 
 import (
+	"bytes"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"path"
 	"time"
 
+	"gopkg.in/yaml.v2"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/pivotalservices/pipeline-status-resource/models"
 	"github.com/nu7hatch/gouuid"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
+	"github.com/pivotalservices/pipeline-status-resource/models"
 )
 
 var _ = Describe("In", func() {
@@ -65,9 +67,28 @@ var _ = Describe("In", func() {
 
 			svc = s3.New(session.New(awsConfig))
 
+			status := &models.PipelineStatus{
+				Team:         "test-team",
+				Pipeline:     "test-pipeline",
+				BuildNumber:  "3",
+				State:        models.StateReady,
+				LastModified: "2017-09-10T20:27:00",
+			}
+
+			yaml, _ := yaml.Marshal(status)
+
+			_, err = svc.PutObject(&s3.PutObjectInput{
+				Bucket:      aws.String(bucketName),
+				Key:         aws.String(key),
+				ContentType: aws.String("text/plain"),
+				Body:        bytes.NewReader(yaml),
+				ACL:         aws.String(s3.ObjectCannedACLPrivate),
+			})
+			Expect(err).NotTo(HaveOccurred())
+
 			request = models.InRequest{
 				Version: models.Version{
-					Number: "1.2.3",
+					Number: "3",
 				},
 				Source: models.Source{
 					Bucket:          bucketName,
@@ -107,37 +128,10 @@ var _ = Describe("In", func() {
 			Expect(err).NotTo(HaveOccurred())
 		})
 
-		for bump, result := range map[string]string{
-			"":      "1.2.3",
-			"final": "1.2.3",
-			"patch": "1.2.4",
-			"minor": "1.3.0",
-			"major": "2.0.0",
-		} {
-			bumpLocal := bump
-			resultLocal := result
-
-			Context(fmt.Sprintf("when bumping %s", bumpLocal), func() {
-				BeforeEach(func() {
-					request.Params.Bump = bumpLocal
-				})
-
-				It("reports the original version as the version", func() {
-					Expect(response.Version.Number).To(Equal(request.Version.Number))
-				})
-
-				It("writes the version to the destination 'number' file", func() {
-					contents, err := ioutil.ReadFile(path.Join(destination, "number"))
-					Expect(err).NotTo(HaveOccurred())
-					Expect(string(contents)).To(Equal(resultLocal))
-				})
-
-				It("writes the version to the destination 'version' file", func() {
-					contents, err := ioutil.ReadFile(path.Join(destination, "version"))
-					Expect(err).NotTo(HaveOccurred())
-					Expect(string(contents)).To(Equal(resultLocal))
-				})
-			})
-		}
+		It("should have created a file", func() {
+			checkFile := path.Join(destination, "status")
+			_, err := os.Stat(checkFile)
+			Expect(os.IsNotExist(err)).Should(BeFalse())
+		})
 	})
 })
