@@ -8,7 +8,7 @@ export PATH=$GOPATH/bin:$PATH
 
 BUILD_DIR=$PWD/built-resource
 
-cd $GOPATH/src/github.com/concourse/semver-resource
+cd $GOPATH/src/github.com/pivotalservices/pipeline-status-resource
 
 go install ./vendor/github.com/onsi/ginkgo/ginkgo
 
