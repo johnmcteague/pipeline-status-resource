@@ -1,23 +1,23 @@
 ---
 platform: linux
 
-image_resource: 
+image_resource:
   type: docker-image
   source:
     repository: concourse/static-golang
 
 inputs:
-- name: semver-resource
-  path: gopath/src/github.com/concourse/semver-resource
+- name: source
+  path: gopath/src/github.com/pivotalservices/pipeline-status-resource
 
 outputs:
 - name: built-resource
 
 params:
-  SEMVER_TESTING_ACCESS_KEY_ID:
-  SEMVER_TESTING_SECRET_ACCESS_KEY:
-  SEMVER_TESTING_BUCKET:
-  SEMVER_TESTING_REGION:
+  STATUS_TESTING_ACCESS_KEY_ID:
+  STATUS_TESTING_SECRET_ACCESS_KEY:
+  STATUS_TESTING_BUCKET:
+  STATUS_TESTING_REGION:
 
 run:
-  path: gopath/src/github.com/concourse/semver-resource/scripts/ci
+  path: gopath/src/github.com/pivotalservices/pipeline-status-resource/scripts/ci
