@@ -33,5 +33,5 @@ func ChangeState(status *models.PipelineStatus,
 
 func modifyStatus(s *models.PipelineStatus) {
 	now := time.Now()
-	s.LastModified = now.Format("2006-01-02T15:04:05-0700")
+	s.LastModified = now.Format(models.ISO8601DateFormat)
 }

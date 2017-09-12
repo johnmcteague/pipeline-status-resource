@@ -4,13 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
-
-	"github.com/blang/semver"
+	"time"
 
 	"github.com/pivotalservices/pipeline-status-resource/driver"
 	"github.com/pivotalservices/pipeline-status-resource/models"
-	"github.com/pivotalservices/pipeline-status-resource/version"
 )
 
 func main() {
@@ -19,7 +16,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	sources := os.Args[1]
+	// sources := os.Args[1]
 
 	var request models.OutRequest
 	err := json.NewDecoder(os.Stdin).Decode(&request)
@@ -32,50 +29,53 @@ func main() {
 		fatal("constructing driver", err)
 	}
 
-	var newVersion semver.Version
-	if request.Params.File != "" {
-		versionFile, err := os.Open(filepath.Join(sources, request.Params.File))
-		if err != nil {
-			fatal("opening version file", err)
+	status := &models.PipelineStatus{}
+
+	switch request.Params.Action {
+	case models.Start:
+		ok, err := driver.Load(status)
+		if !ok && err != nil {
+			fatal("fetching status", err)
 		}
 
-		defer versionFile.Close()
+		if request.Source.RequireReady {
+			retryDuration, err := time.ParseDuration(request.Source.RetryAfter)
+			if err != nil {
+				retryDuration = models.DefaultRetryPeriod
+			}
 
-		var versionStr string
-		_, err = fmt.Fscanf(versionFile, "%s", &versionStr)
-		if err != nil {
-			fatal("reading version file", err)
+			for {
+				if status.State == models.StateReady {
+					break
+				}
+
+				fmt.Fprint(os.Stderr, ".")
+				time.Sleep(retryDuration)
+
+				ok, err = driver.Load(status)
+				if !ok && err != nil {
+					fatal("fetching status", err)
+				}
+			}
 		}
 
-		newVersion, err = semver.Parse(versionStr)
-		if err != nil {
-			fatal("parsing version", err)
-		}
-
-		err = driver.Set(newVersion)
-		if err != nil {
-			fatal("setting version", err)
-		}
-	} else if request.Params.Bump != "" || request.Params.Pre != "" {
-		bump := version.BumpFromParams(request.Params.Bump, request.Params.Pre)
-
-		newVersion, err = driver.Bump(bump)
-		if err != nil {
-			fatal("bumping version", err)
-		}
-	} else {
-		println("no version bump specified")
-		os.Exit(1)
+		status, err = driver.Start()
+	case models.Finish:
+		status, err = driver.Finish()
+	case models.Fail:
+		status, err = driver.Fail()
 	}
 
-	outVersion := models.Version{
-		Number: newVersion.String(),
+	if err != nil {
+		fatal(fmt.Sprintf("%sing pipeline", request.Params.Action), err)
 	}
 
 	json.NewEncoder(os.Stdout).Encode(models.OutResponse{
-		Version: outVersion,
+		Version: models.Version{
+			Number: status.BuildNumber,
+		},
 		Metadata: models.Metadata{
-			{"number", outVersion.Number},
+			{"number", status.BuildNumber},
 		},
 	})
 }

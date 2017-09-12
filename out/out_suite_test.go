@@ -16,8 +16,14 @@ var secretAccessKey = os.Getenv("SEMVER_TESTING_SECRET_ACCESS_KEY")
 var bucketName = os.Getenv("SEMVER_TESTING_BUCKET")
 var regionName = os.Getenv("SEMVER_TESTING_REGION")
 
+var pipelineName, pnExists = os.LookupEnv("BUILD_PIPELINE_NAME")
+var teamName, tnExists = os.LookupEnv("BUILD_TEAM_NAME")
+
 var _ = BeforeSuite(func() {
 	var err error
+
+	os.Setenv("BUILD_PIPELINE_NAME", "test-pipeline")
+	os.Setenv("BUILD_TEAM_NAME", "test-team")
 
 	Expect(accessKeyID).NotTo(BeEmpty(), "must specify $SEMVER_TESTING_ACCESS_KEY_ID")
 	Expect(secretAccessKey).NotTo(BeEmpty(), "must specify $SEMVER_TESTING_SECRET_ACCESS_KEY")
@@ -29,6 +35,18 @@ var _ = BeforeSuite(func() {
 })
 
 var _ = AfterSuite(func() {
+	if pnExists {
+		os.Setenv("BUILD_PIPELINE_NAME", pipelineName)
+	} else {
+		os.Unsetenv("BUILD_PIPELINE_NAME")
+	}
+
+	if tnExists {
+		os.Setenv("BUILD_TEAM_NAME", teamName)
+	} else {
+		os.Unsetenv("BUILD_TEAM_NAME")
+	}
+
 	gexec.CleanupBuildArtifacts()
 })
 
