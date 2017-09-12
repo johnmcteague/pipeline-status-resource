@@ -13,7 +13,7 @@ import (
 
 type Driver interface {
 	Check(lastModCursor string) ([]string, error)
-	Load(status *models.PipelineStatus) error
+	Load(status *models.PipelineStatus) (bool, error)
 	Start() (*models.PipelineStatus, error)
 	Finish() (*models.PipelineStatus, error)
 	Fail() (*models.PipelineStatus, error)

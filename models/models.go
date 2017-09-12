@@ -31,10 +31,7 @@ type OutResponse struct {
 }
 
 type OutParams struct {
-	File string `json:"file"`
-
-	Bump string `json:"bump"`
-	Pre  string `json:"pre"`
+	Action StatusAction `json:"action"`
 }
 
 type CheckRequest struct {
@@ -119,6 +116,8 @@ type PipelineStatus struct {
 }
 
 type Driver string
+type PipelineState string
+type StatusAction string
 
 const (
 	DriverUnspecified Driver = ""
@@ -128,13 +127,21 @@ const (
 	DriverGCS         Driver = "gcs"
 )
 
-type PipelineState string
-
 const (
 	StateReady   PipelineState = "READY"
 	StateRunning PipelineState = "RUNNING"
 )
 
 const (
+	Start  StatusAction = "start"
+	Finish StatusAction = "finish"
+	Fail   StatusAction = "fail"
+)
+
+const (
 	DefaultRetryPeriod time.Duration = 1 * time.Minute
+)
+
+const (
+	ISO8601DateFormat string = "2006-01-02T15:04:05-0700"
 )

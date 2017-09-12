@@ -39,8 +39,8 @@ func main() {
 	}
 
 	status := &models.PipelineStatus{}
-	err = driver.Load(status)
-	if err != nil {
+	ok, err := driver.Load(status)
+	if !ok {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}

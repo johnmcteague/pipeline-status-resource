@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strconv"
 	"strings"
 
 	"gopkg.in/yaml.v2"
@@ -23,10 +24,9 @@ type Servicer interface {
 }
 
 type S3Driver struct {
-	InitialVersion string
-
 	Env                  venv.Env
 	Svc                  Servicer
+	InitialVersion       string
 	BucketName           string
 	Key                  string
 	ServerSideEncryption string
@@ -37,7 +37,7 @@ func (driver *S3Driver) Start() (status *models.PipelineStatus, err error) {
 	teamName := driver.Env.Getenv("BUILD_TEAM_NAME")
 
 	status = &models.PipelineStatus{}
-	err = driver.Load(status)
+	_, err = driver.Load(status)
 	if err == nil {
 		if status.Pipeline != pipelineName {
 			err = fmt.Errorf("State file is already associated with pipeline %s but is trying to be associated with pipeline %s",
@@ -56,12 +56,16 @@ func (driver *S3Driver) Start() (status *models.PipelineStatus, err error) {
 		status = &models.PipelineStatus{}
 		status.Pipeline = pipelineName
 		status.Team = teamName
-		status.BuildNumber = driver.InitialVersion
+		status.BuildNumber = driver.getPreStartInitialState()
 	} else {
 		status = nil
 	}
 
-	driver.changeAndPersistState(status, models.StateRunning, nil)
+	_, err = driver.changeAndPersistState(status, models.StateRunning, nil)
+	if err != nil {
+		panic(err)
+	}
+
 	return
 }
 
@@ -86,11 +90,12 @@ func (driver *S3Driver) Fail() (status *models.PipelineStatus, err error) {
 
 func (driver *S3Driver) Check(cursor string) ([]string, error) {
 	status := &models.PipelineStatus{}
-	err := driver.Load(status)
+	ok, err := driver.Load(status)
 
 	versions := make([]string, 0, 1)
 
-	if err == nil {
+	if ok {
+		err = nil
 		switch status.State {
 		case "":
 			if cursor == "" {
@@ -110,7 +115,7 @@ func (driver *S3Driver) Check(cursor string) ([]string, error) {
 	return versions, err
 }
 
-func (driver *S3Driver) Load(status *models.PipelineStatus) error {
+func (driver *S3Driver) Load(status *models.PipelineStatus) (bool, error) {
 	resp, err := driver.Svc.GetObject(&s3.GetObjectInput{
 		Bucket: aws.String(driver.BucketName),
 		Key:    aws.String(driver.Key),
@@ -120,25 +125,35 @@ func (driver *S3Driver) Load(status *models.PipelineStatus) error {
 		var statusYaml []byte
 		statusYaml, err = ioutil.ReadAll(resp.Body)
 		if err != nil {
-			return err
+			return false, err
 		}
 
 		defer resp.Body.Close()
 
 		err = yaml.Unmarshal(statusYaml, status)
 		if err != nil {
-			return err
+			return false, err
 		}
+	} else if s3err, ok := err.(awserr.RequestFailure); ok && s3err.StatusCode() == 404 {
+		return true, err
 	}
 
-	return nil
+	return true, nil
 }
 
 func (driver *S3Driver) makeReady(failure *models.BuildFailure) (status *models.PipelineStatus, err error) {
 	status = &models.PipelineStatus{}
-	err = driver.Load(status)
-	if err == nil {
-		if ok, err := driver.changeAndPersistState(status, models.StateReady, failure); ok {
+	ok, err := driver.Load(status)
+	if ok {
+		if err != nil {
+			retErr := fmt.Errorf("Cannot create a pipeline status for the first time in Ready state")
+			return nil, retErr
+		} else if failure != nil && status.State == models.StateReady {
+			retErr := fmt.Errorf("Cannot add a failure to a non-running pipeline")
+			return nil, retErr
+		}
+
+		if ok, err = driver.changeAndPersistState(status, models.StateReady, failure); ok {
 			return status, err
 		}
 	}
@@ -146,13 +161,30 @@ func (driver *S3Driver) makeReady(failure *models.BuildFailure) (status *models.
 	return nil, err
 }
 
+func (driver *S3Driver) getPreStartInitialState() string {
+	if driver.InitialVersion == "" {
+		return "0"
+	}
+
+	var initVersion int
+	var err error
+	if initVersion, err = strconv.Atoi(driver.InitialVersion); err != nil {
+		return "0"
+	}
+
+	if initVersion <= 0 {
+		return "0"
+	}
+
+	return strconv.Itoa(initVersion - 1)
+}
+
 func (driver *S3Driver) changeAndPersistState(status *models.PipelineStatus,
 	pipelineState models.PipelineState,
 	failure *models.BuildFailure) (ok bool, err error) {
-
-	if status != nil && err == nil {
+	if status != nil {
 		status.Failure = failure
-		status, err = state.ChangeState(status, pipelineState, nil)
+		status, err = state.ChangeState(status, pipelineState, failure)
 
 		if err == nil {
 			outputYaml, marshalError := yaml.Marshal(status)

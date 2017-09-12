@@ -7,18 +7,20 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
-	"path/filepath"
+	"strings"
 	"time"
+
+	"gopkg.in/yaml.v2"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/pivotalservices/pipeline-status-resource/models"
 	"github.com/nu7hatch/gouuid"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
+	"github.com/pivotalservices/pipeline-status-resource/models"
 )
 
 var _ = Describe("Out", func() {
@@ -27,6 +29,17 @@ var _ = Describe("Out", func() {
 	var source string
 
 	var outCmd *exec.Cmd
+
+	var stdOutString string
+
+	var yamlTemplate string = `
+---
+pipeline: test-pipeline
+team: test-team
+build: %s
+last_modified: %s
+state: %s
+`
 
 	BeforeEach(func() {
 		var err error
@@ -86,24 +99,7 @@ var _ = Describe("Out", func() {
 			Expect(err).NotTo(HaveOccurred())
 		})
 
-		JustBeforeEach(func() {
-			stdin, err := outCmd.StdinPipe()
-			Expect(err).NotTo(HaveOccurred())
-
-			session, err := gexec.Start(outCmd, GinkgoWriter, GinkgoWriter)
-			Expect(err).NotTo(HaveOccurred())
-
-			err = json.NewEncoder(stdin).Encode(request)
-			Expect(err).NotTo(HaveOccurred())
-
-			// account for roundtrip to s3
-			Eventually(session, 5*time.Second).Should(gexec.Exit(0))
-
-			err = json.Unmarshal(session.Out.Contents(), &response)
-			Expect(err).NotTo(HaveOccurred())
-		})
-
-		getVersion := func() string {
+		getStatus := func() models.PipelineStatus {
 			resp, err := svc.GetObject(&s3.GetObjectInput{
 				Bucket: aws.String(bucketName),
 				Key:    aws.String(key),
@@ -114,159 +110,251 @@ var _ = Describe("Out", func() {
 			Expect(err).NotTo(HaveOccurred())
 			defer resp.Body.Close()
 
-			return string(contents)
+			s := models.PipelineStatus{}
+			err = yaml.Unmarshal(contents, &s)
+			Expect(err).NotTo(HaveOccurred())
+
+			//fmt.Println(string(contents))
+
+			return s
 		}
 
-		putVersion := func(version string) {
+		putStatus := func(buildNum string, buildState models.PipelineState) string {
+			now := time.Now().Format(models.ISO8601DateFormat)
+			yaml := fmt.Sprintf(yamlTemplate, buildNum, now, buildState)
+
 			_, err := svc.PutObject(&s3.PutObjectInput{
 				Bucket:      aws.String(bucketName),
 				Key:         aws.String(key),
 				ContentType: aws.String("text/plain"),
-				Body:        bytes.NewReader([]byte(version)),
+				Body:        bytes.NewReader([]byte(yaml)),
 				ACL:         aws.String(s3.ObjectCannedACLPrivate),
 			})
 			Expect(err).NotTo(HaveOccurred())
+
+			return now
 		}
 
-		Context("when setting the version", func() {
+		runAndExpectSuccess := func() {
+			stdin, err := outCmd.StdinPipe()
+			Expect(err).NotTo(HaveOccurred())
+
+			session, err := gexec.Start(outCmd, GinkgoWriter, GinkgoWriter)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = json.NewEncoder(stdin).Encode(request)
+			Expect(err).NotTo(HaveOccurred())
+
+			// account for roundtrip to s3
+			Eventually(session, 15*time.Second).Should(gexec.Exit(0))
+
+			err = json.Unmarshal(session.Out.Contents(), &response)
+			Expect(err).NotTo(HaveOccurred())
+		}
+
+		runAndExpectFailure := func() {
+			stdin, err := outCmd.StdinPipe()
+			Expect(err).NotTo(HaveOccurred())
+
+			session, err := gexec.Start(outCmd, GinkgoWriter, GinkgoWriter)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = json.NewEncoder(stdin).Encode(request)
+			Expect(err).NotTo(HaveOccurred())
+
+			// account for roundtrip to s3
+			Eventually(session, 5*time.Second).Should(gexec.Exit(1))
+
+			stdOutString = string(session.Out.Contents())
+		}
+
+		Context("when starting a build", func() {
+			JustBeforeEach(runAndExpectSuccess)
+
 			BeforeEach(func() {
-				request.Params.File = "number"
+				request.Params.Action = models.Start
 			})
 
-			Context("when a valid version is in the file", func() {
-				BeforeEach(func() {
-					err := ioutil.WriteFile(filepath.Join(source, "number"), []byte("1.2.3"), 0644)
-					Expect(err).NotTo(HaveOccurred())
+			Context("for the first time", func() {
+				Context("with an initial version", func() {
+					BeforeEach(func() {
+						request.Source.InitialVersion = "10"
+					})
+
+					It("reports the state as running with the initial version", func() {
+						status := getStatus()
+						Expect(status.State).Should(Equal(models.StateRunning))
+						Expect(status.BuildNumber).Should(Equal(request.Source.InitialVersion))
+					})
 				})
 
-				It("reports the version as the resource's version", func() {
-					Expect(response.Version.Number).To(Equal("1.2.3"))
+				Context("without an initial version", func() {
+					It("reports the state as running with version 1", func() {
+						status := getStatus()
+						Expect(status.State).Should(Equal(models.StateRunning))
+						Expect(status.BuildNumber).Should(Equal("1"))
+					})
+				})
+			})
+
+			Context("subsequent times", func() {
+				Context("when the state is currently running", func() {
+					var timestamp string
+					BeforeEach(func() {
+						timestamp = putStatus("1", models.StateRunning)
+					})
+
+					Context("without locking enabled", func() {
+						It("nothing should change", func() {
+							status := getStatus()
+							Expect(status.State).Should(Equal(models.StateRunning))
+							Expect(status.BuildNumber).Should(Equal("1"))
+							Expect(status.LastModified).Should(Equal(timestamp))
+						})
+					})
+
+					Context("with locking enabled", func() {
+						var timestamp string
+						BeforeEach(func() {
+							request.Source.RequireReady = true
+							request.Source.RetryAfter = "5s"
+
+							timestamp = putStatus("5", models.StateRunning)
+							go func() {
+								time.Sleep(7 * time.Second)
+								_ = putStatus("5", models.StateReady)
+							}()
+						})
+
+						It("should start the build after 6 seconds", func() {
+							status := getStatus()
+							originalTime, _ := time.Parse(models.ISO8601DateFormat, timestamp)
+							newTime, _ := time.Parse(models.ISO8601DateFormat, status.LastModified)
+
+							atLeast := originalTime.Add(10 * time.Second)
+							notMoreThan := originalTime.Add(15 * time.Second)
+
+							Expect(newTime).Should(BeTemporally(">=", atLeast, 1*time.Second))
+							Expect(newTime).Should(BeTemporally("<", notMoreThan, 1*time.Second))
+							Expect(status.State).Should(Equal(models.StateRunning))
+							Expect(status.BuildNumber).Should(Equal("6"))
+						})
+					})
 				})
 
-				It("saves the contents of the file in the configured bucket", func() {
-					Expect(getVersion()).To(Equal("1.2.3"))
+				Context("when the state is currently ready", func() {
+					var timestamp string
+					BeforeEach(func() {
+						timestamp = putStatus("3", models.StateReady)
+						time.Sleep(2 * time.Second)
+					})
+
+					It("should increment the build, change the state, and change the last modified date", func() {
+						status := getStatus()
+						Expect(status.State).Should(Equal(models.StateRunning))
+						Expect(status.BuildNumber).Should(Equal("4"))
+						Expect(strings.Compare(status.LastModified, timestamp)).Should(BeNumerically(">", 0))
+					})
 				})
 			})
 		})
 
-		Context("when bumping the version", func() {
+		Context("when finishing a build", func() {
 			BeforeEach(func() {
-				putVersion("1.2.3")
+				request.Params.Action = models.Finish
 			})
 
-			for bump, result := range map[string]string{
-				"final": "1.2.3",
-				"patch": "1.2.4",
-				"minor": "1.3.0",
-				"major": "2.0.0",
-			} {
-				bumpLocal := bump
-				resultLocal := result
+			Context("without an existing status", func() {
+				JustBeforeEach(runAndExpectFailure)
+				It("should fail", func() {})
+			})
 
-				Context(fmt.Sprintf("when bumping %s", bumpLocal), func() {
+			Context("with an existing status", func() {
+				JustBeforeEach(runAndExpectSuccess)
+
+				Context("which is currently running", func() {
+					var lastMod string
 					BeforeEach(func() {
-						request.Params.Bump = bumpLocal
+						lastMod = putStatus("10", models.StateRunning)
+						time.Sleep(2 * time.Second)
 					})
 
-					It("reports the bumped version as the version", func() {
-						Expect(response.Version.Number).To(Equal(resultLocal))
-					})
-
-					It("saves the contents of the file in the configured bucket", func() {
-						Expect(getVersion()).To(Equal(resultLocal))
+					It("should change the state and last modified but not the build number", func() {
+						status := getStatus()
+						Expect(status.BuildNumber).To(Equal("10"))
+						Expect(status.State).To(Equal(models.StateReady))
+						Expect(strings.Compare(status.LastModified, lastMod)).To(BeNumerically(">", 0))
 					})
 				})
-			}
+
+				Context("which is currently ready", func() {
+					var lastMod string
+					BeforeEach(func() {
+						lastMod = putStatus("10", models.StateReady)
+						time.Sleep(2 * time.Second)
+					})
+
+					It("should change nothing", func() {
+						status := getStatus()
+						Expect(status.BuildNumber).To(Equal("10"))
+						Expect(status.State).To(Equal(models.StateReady))
+						Expect(status.LastModified).To(Equal(lastMod))
+					})
+				})
+			})
 		})
 
-		Context("when bumping the version to a prerelease", func() {
+		Context("when failing a build", func() {
 			BeforeEach(func() {
-				request.Params.Pre = "alpha"
+				os.Setenv("ATC_EXTERNAL_URL", "https://concourse.example.com")
+				os.Setenv("BUILD_JOB_NAME", "test-job")
+				os.Setenv("BUILD_NAME", "10")
+				request.Params.Action = models.Fail
 			})
 
-			Context("when the version is not a prerelease", func() {
-				BeforeEach(func() {
-					putVersion("1.2.3")
-				})
-
-				It("reports the bumped version as the version", func() {
-					Expect(response.Version.Number).To(Equal("1.2.3-alpha.1"))
-				})
-
-				It("saves the contents of the file in the configured bucket", func() {
-					Expect(getVersion()).To(Equal("1.2.3-alpha.1"))
-				})
-
-				Context("when doing a semantic bump at the same time", func() {
-					BeforeEach(func() {
-						request.Params.Bump = "minor"
-					})
-
-					It("reports the bumped version as the version", func() {
-						Expect(response.Version.Number).To(Equal("1.3.0-alpha.1"))
-					})
-
-					It("saves the contents of the file in the configured bucket", func() {
-						Expect(getVersion()).To(Equal("1.3.0-alpha.1"))
-					})
-				})
+			AfterEach(func() {
+				os.Unsetenv("ATC_EXTERNAL_URL")
+				os.Unsetenv("BUILD_JOB_NAME")
+				os.Unsetenv("BUILD_NAME")
 			})
 
-			Context("when the version is the same prerelease", func() {
-				BeforeEach(func() {
-					putVersion("1.2.3-alpha.2")
-				})
-
-				It("reports the bumped version as the version", func() {
-					Expect(response.Version.Number).To(Equal("1.2.3-alpha.3"))
-				})
-
-				It("saves the contents of the file in the configured bucket", func() {
-					Expect(getVersion()).To(Equal("1.2.3-alpha.3"))
-				})
-
-				Context("when doing a semantic bump at the same time", func() {
-					BeforeEach(func() {
-						request.Params.Bump = "minor"
-					})
-
-					It("reports the bumped version as the version", func() {
-						Expect(response.Version.Number).To(Equal("1.3.0-alpha.1"))
-					})
-
-					It("saves the contents of the file in the configured bucket", func() {
-						Expect(getVersion()).To(Equal("1.3.0-alpha.1"))
-					})
-				})
+			Context("without an existing status", func() {
+				JustBeforeEach(runAndExpectFailure)
+				It("should fail", func() {})
 			})
 
-			Context("when the version is a different prerelease", func() {
-				BeforeEach(func() {
-					putVersion("1.2.3-beta.2")
-				})
+			Context("with an existing status", func() {
 
-				It("reports the bumped version as the version", func() {
-					Expect(response.Version.Number).To(Equal("1.2.3-alpha.1"))
-				})
-
-				It("saves the contents of the file in the configured bucket", func() {
-					Expect(getVersion()).To(Equal("1.2.3-alpha.1"))
-				})
-
-				Context("when doing a semantic bump at the same time", func() {
+				Context("which is currently running", func() {
+					var lastMod string
 					BeforeEach(func() {
-						request.Params.Bump = "minor"
+						lastMod = putStatus("10", models.StateRunning)
+						time.Sleep(2 * time.Second)
 					})
 
-					It("reports the bumped version as the version", func() {
-						Expect(response.Version.Number).To(Equal("1.3.0-alpha.1"))
+					JustBeforeEach(runAndExpectSuccess)
+
+					It("should change the state and last modified but not the build number", func() {
+						status := getStatus()
+						Expect(status.BuildNumber).To(Equal("10"))
+						Expect(status.State).To(Equal(models.StateReady))
+						Expect(strings.Compare(status.LastModified, lastMod)).To(BeNumerically(">", 0))
+						Expect(status.Failure).ToNot(BeNil())
+						Expect(status.Failure.DetailsURL).To(
+							Equal("https://concourse.example.com/teams/test-team/pipelines/test-pipeline/jobs/test-job/builds/10"))
+					})
+				})
+
+				Context("which is currently ready", func() {
+					BeforeEach(func() {
+						putStatus("10", models.StateReady)
 					})
 
-					It("saves the contents of the file in the configured bucket", func() {
-						Expect(getVersion()).To(Equal("1.3.0-alpha.1"))
-					})
+					JustBeforeEach(runAndExpectFailure)
+					It("should fail", func() {})
 				})
 			})
 		})
 	})
+
 })
