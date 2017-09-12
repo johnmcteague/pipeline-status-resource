@@ -16,4 +16,4 @@ CGO_ENABLED=1 ginkgo -race -r -p "$@"
 
 ./scripts/build
 
-cp -a assets/ test/ Dockerfile $BUILD_DIR
+cp -a assets/ Dockerfile $BUILD_DIR
