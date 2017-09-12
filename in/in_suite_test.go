@@ -11,18 +11,18 @@ import (
 
 var inPath string
 
-var accessKeyID = os.Getenv("SEMVER_TESTING_ACCESS_KEY_ID")
-var secretAccessKey = os.Getenv("SEMVER_TESTING_SECRET_ACCESS_KEY")
-var bucketName = os.Getenv("SEMVER_TESTING_BUCKET")
-var regionName = os.Getenv("SEMVER_TESTING_REGION")
+var accessKeyID = os.Getenv("STATUS_TESTING_ACCESS_KEY_ID")
+var secretAccessKey = os.Getenv("STATUS_TESTING_SECRET_ACCESS_KEY")
+var bucketName = os.Getenv("STATUS_TESTING_BUCKET")
+var regionName = os.Getenv("STATUS_TESTING_REGION")
 
 var _ = BeforeSuite(func() {
 	var err error
 
-	Expect(accessKeyID).NotTo(BeEmpty(), "must specify $SEMVER_TESTING_ACCESS_KEY_ID")
-	Expect(secretAccessKey).NotTo(BeEmpty(), "must specify $SEMVER_TESTING_SECRET_ACCESS_KEY")
-	Expect(bucketName).NotTo(BeEmpty(), "must specify $SEMVER_TESTING_BUCKET")
-	Expect(regionName).NotTo(BeEmpty(), "must specify $SEMVER_TESTING_REGION")
+	Expect(accessKeyID).NotTo(BeEmpty(), "must specify $STATUS_TESTING_ACCESS_KEY_ID")
+	Expect(secretAccessKey).NotTo(BeEmpty(), "must specify $STATUS_TESTING_SECRET_ACCESS_KEY")
+	Expect(bucketName).NotTo(BeEmpty(), "must specify $STATUS_TESTING_BUCKET")
+	Expect(regionName).NotTo(BeEmpty(), "must specify $STATUS_TESTING_REGION")
 
 	inPath, err = gexec.Build("github.com/pivotalservices/pipeline-status-resource/in")
 	Expect(err).NotTo(HaveOccurred())

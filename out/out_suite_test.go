@@ -11,10 +11,10 @@ import (
 
 var outPath string
 
-var accessKeyID = os.Getenv("SEMVER_TESTING_ACCESS_KEY_ID")
-var secretAccessKey = os.Getenv("SEMVER_TESTING_SECRET_ACCESS_KEY")
-var bucketName = os.Getenv("SEMVER_TESTING_BUCKET")
-var regionName = os.Getenv("SEMVER_TESTING_REGION")
+var accessKeyID = os.Getenv("STATUS_TESTING_ACCESS_KEY_ID")
+var secretAccessKey = os.Getenv("STATUS_TESTING_SECRET_ACCESS_KEY")
+var bucketName = os.Getenv("STATUS_TESTING_BUCKET")
+var regionName = os.Getenv("STATUS_TESTING_REGION")
 
 var pipelineName, pnExists = os.LookupEnv("BUILD_PIPELINE_NAME")
 var teamName, tnExists = os.LookupEnv("BUILD_TEAM_NAME")
@@ -25,10 +25,10 @@ var _ = BeforeSuite(func() {
 	os.Setenv("BUILD_PIPELINE_NAME", "test-pipeline")
 	os.Setenv("BUILD_TEAM_NAME", "test-team")
 
-	Expect(accessKeyID).NotTo(BeEmpty(), "must specify $SEMVER_TESTING_ACCESS_KEY_ID")
-	Expect(secretAccessKey).NotTo(BeEmpty(), "must specify $SEMVER_TESTING_SECRET_ACCESS_KEY")
-	Expect(bucketName).NotTo(BeEmpty(), "must specify $SEMVER_TESTING_BUCKET")
-	Expect(regionName).NotTo(BeEmpty(), "must specify $SEMVER_TESTING_REGION")
+	Expect(accessKeyID).NotTo(BeEmpty(), "must specify $STATUS_TESTING_ACCESS_KEY_ID")
+	Expect(secretAccessKey).NotTo(BeEmpty(), "must specify $STATUS_TESTING_SECRET_ACCESS_KEY")
+	Expect(bucketName).NotTo(BeEmpty(), "must specify $STATUS_TESTING_BUCKET")
+	Expect(regionName).NotTo(BeEmpty(), "must specify $STATUS_TESTING_REGION")
 
 	outPath, err = gexec.Build("github.com/pivotalservices/pipeline-status-resource/out")
 	Expect(err).NotTo(HaveOccurred())
