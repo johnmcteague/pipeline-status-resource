@@ -1,17 +1,13 @@
-hash: d1e934071b6649fe54da2d5b21b147cc71261b792f3d400da17f6ecce2df2480
-updated: 2017-09-11T09:38:24.45960289-04:00
+hash: b47eab38ddbd764713da724419a7f9a24cdb855ad1a4075ed57b2f1b74c6cba6
+updated: 2017-09-12T16:03:32.701817464-04:00
 imports:
-- name: cloud.google.com/go
-  version: 1816f0b79338997f0dc2dc43e2b725a8560e80de
+- name: github.com/adammck/venv
+  version: 8a9c907a37d36a8f34fa1c5b81aaf80c2554a306
   subpackages:
-  - compute/metadata
-  - iam
-  - internal
-  - internal/optional
-  - internal/version
-  - storage
+  - mock
+  - os
 - name: github.com/aws/aws-sdk-go
-  version: 12b6a0f7b3e676d459a9480e75df7efe576cfcb2
+  version: c8f58a0af6526ee48a085fc4fd01df0b53025857
   subpackages:
   - aws
   - aws/awserr
@@ -38,130 +34,12 @@ imports:
   - private/protocol/xml/xmlutil
   - service/s3
   - service/sts
-- name: github.com/blang/semver
-  version: 2ee87856327ba09384cabd113bc6b5d174e9ec0f
 - name: github.com/go-ini/ini
   version: c787282c39ac1fc618827141a1f762240def08a3
-- name: github.com/golang/protobuf
-  version: 17ce1425424ab154092bbb43af630bd647f3bb0d
-  subpackages:
-  - proto
-  - protoc-gen-go/descriptor
-  - ptypes
-  - ptypes/any
-  - ptypes/duration
-  - ptypes/timestamp
-- name: github.com/googleapis/gax-go
-  version: 8c160ca1523d8eea3932fbaa494c8964b7724aa8
 - name: github.com/jmespath/go-jmespath
   version: bd40a432e4c76585ef6b72d3fd96fb9b6dc7b68d
-- name: github.com/mitchellh/mapstructure
-  version: d0303fe809921458f417bcf828397a65db30a7e4
-- name: github.com/rackspace/gophercloud
-  version: e00690e87603abe613e9f02c816c7c4bef82e063
-  subpackages:
-  - openstack
-  - openstack/identity/v2/tenants
-  - openstack/identity/v2/tokens
-  - openstack/identity/v3/tokens
-  - openstack/objectstorage/v1/accounts
-  - openstack/objectstorage/v1/containers
-  - openstack/objectstorage/v1/objects
-  - openstack/utils
-  - pagination
-  - testhelper
-  - testhelper/client
-- name: golang.org/x/net
-  version: 66aacef3dd8a676686c7ae3716979581e8b03c47
-  subpackages:
-  - context
-  - context/ctxhttp
-  - html
-  - html/atom
-  - html/charset
-  - http2
-  - http2/hpack
-  - idna
-  - internal/timeseries
-  - lex/httplex
-  - trace
-- name: golang.org/x/oauth2
-  version: d89af98d7c6bba047c5a2622f36bc14b8766df85
-  subpackages:
-  - google
-  - internal
-  - jws
-  - jwt
-- name: golang.org/x/text
-  version: bd91bbf73e9a4a801adbfb97133c992678533126
-  subpackages:
-  - encoding
-  - encoding/charmap
-  - encoding/htmlindex
-  - encoding/internal
-  - encoding/internal/identifier
-  - encoding/japanese
-  - encoding/korean
-  - encoding/simplifiedchinese
-  - encoding/traditionalchinese
-  - encoding/unicode
-  - internal/tag
-  - internal/utf8internal
-  - language
-  - runes
-  - secure/bidirule
-  - transform
-  - unicode/bidi
-  - unicode/norm
-- name: google.golang.org/api
-  version: b6a02105ec5a446209e9d38557f0e1ac30cacf82
-  subpackages:
-  - gensupport
-  - googleapi
-  - googleapi/internal/uritemplates
-  - googleapi/transport
-  - internal
-  - iterator
-  - option
-  - storage/v1
-  - transport/http
-- name: google.golang.org/appengine
-  version: d9a072cfa7b9736e44311ef77b3e09d804bfa599
-  subpackages:
-  - internal
-  - internal/app_identity
-  - internal/base
-  - internal/datastore
-  - internal/log
-  - internal/modules
-  - internal/remote_api
-  - internal/urlfetch
-  - urlfetch
-- name: google.golang.org/genproto
-  version: 595979c8a7bf586b2d293fb42246bf91a0b893d9
-  subpackages:
-  - googleapis/api/annotations
-  - googleapis/iam/v1
-  - googleapis/rpc/status
-- name: google.golang.org/grpc
-  version: 3214f767e5a22021f792f7c4625a6380ce1eb2b2
-  subpackages:
-  - balancer
-  - codes
-  - connectivity
-  - credentials
-  - grpclb/grpc_lb_v1/messages
-  - grpclog
-  - internal
-  - keepalive
-  - metadata
-  - naming
-  - peer
-  - resolver
-  - stats
-  - status
-  - tap
-  - transport
+- name: gopkg.in/yaml.v2
+  version: eb3733d160e74a9c7e442f435eb3bea458e1d19f
 testImports:
 - name: github.com/nu7hatch/gouuid
   version: 179d4d0c4d8d407a32af483c2354df1d2c91e6c3
@@ -201,9 +79,31 @@ testImports:
   - matchers/support/goraph/node
   - matchers/support/goraph/util
   - types
+- name: golang.org/x/net
+  version: 66aacef3dd8a676686c7ae3716979581e8b03c47
+  subpackages:
+  - html
+  - html/atom
+  - html/charset
 - name: golang.org/x/sys
-  version: a5054c7c1385fd50d9394475365355a87a7873ec
+  version: 804a9fee62e3fff93a822aac5f0a7a622da5341d
   subpackages:
   - unix
-- name: gopkg.in/yaml.v2
-  version: eb3733d160e74a9c7e442f435eb3bea458e1d19f
+- name: golang.org/x/text
+  version: acd49d43e9b95df46670431bf5c7ae59586daad8
+  subpackages:
+  - encoding
+  - encoding/charmap
+  - encoding/htmlindex
+  - encoding/internal
+  - encoding/internal/identifier
+  - encoding/japanese
+  - encoding/korean
+  - encoding/simplifiedchinese
+  - encoding/traditionalchinese
+  - encoding/unicode
+  - internal/tag
+  - internal/utf8internal
+  - language
+  - runes
+  - transform
