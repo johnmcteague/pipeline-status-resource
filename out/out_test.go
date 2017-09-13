@@ -195,6 +195,19 @@ state: %s
 						Expect(status.BuildNumber).Should(Equal("1"))
 					})
 				})
+
+				Context("with locking enabled", func() {
+					BeforeEach(func() {
+						request.Source.RequireReady = true
+						request.Source.RetryAfter = "2s"
+					})
+
+					It("reports the state as running with version 1", func() {
+						status := getStatus()
+						Expect(status.State).Should(Equal(models.StateRunning))
+						Expect(status.BuildNumber).Should(Equal("1"))
+					})
+				})
 			})
 
 			Context("subsequent times", func() {
