@@ -45,7 +45,7 @@ func main() {
 			}
 
 			for {
-				if status.State == models.StateReady {
+				if status.State == models.StateReady || status.State == "" {
 					break
 				}
 
