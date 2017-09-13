@@ -70,7 +70,7 @@ var _ = Describe("In", func() {
 			status := &models.PipelineStatus{
 				Team:         "test-team",
 				Pipeline:     "test-pipeline",
-				BuildNumber:  "3",
+				BuildNumber:  "4",
 				State:        models.StateReady,
 				LastModified: "2017-09-10T20:27:00",
 			}
@@ -132,6 +132,10 @@ var _ = Describe("In", func() {
 			checkFile := path.Join(destination, "status")
 			_, err := os.Stat(checkFile)
 			Expect(os.IsNotExist(err)).Should(BeFalse())
+		})
+
+		It("should use the build number from the status", func() {
+			Expect(response.Version.Number).To(Equal("4"))
 		})
 	})
 })

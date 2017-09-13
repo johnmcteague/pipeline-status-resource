@@ -55,9 +55,11 @@ func main() {
 	}
 
 	json.NewEncoder(os.Stdout).Encode(models.InResponse{
-		Version: request.Version,
+		Version: models.Version{
+			Number: status.BuildNumber,
+		},
 		Metadata: models.Metadata{
-			{"number", request.Version.Number},
+			{"number", status.BuildNumber},
 		},
 	})
 }
