@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"time"
 
@@ -22,6 +23,14 @@ func main() {
 	err := json.NewDecoder(os.Stdin).Decode(&request)
 	if err != nil {
 		fatal("reading request", err)
+	}
+
+	if request.Source.Debug {
+		if tmpFile, err := ioutil.TempFile("/tmp", "outdbg"); err == nil {
+			json.NewEncoder(tmpFile).Encode(request)
+		} else {
+			fmt.Fprintf(os.Stderr, "Error writing debug output: %v\n", err)
+		}
 	}
 
 	driver, err := driver.FromSource(request.Source)
