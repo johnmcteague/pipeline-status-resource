@@ -32,6 +32,14 @@ func main() {
 		fatal("reading request", err)
 	}
 
+	if request.Source.Debug {
+		if tmpFile, err := ioutil.TempFile("/tmp", "indbg"); err == nil {
+			json.NewEncoder(tmpFile).Encode(request)
+		} else {
+			fmt.Fprintf(os.Stderr, "Error writing debug output: %v\n", err)
+		}
+	}
+
 	driver, err := driver.FromSource(request.Source)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
