@@ -8,9 +8,5 @@ WORKING_DIR=$GOPATH/src/github.com/pivotalservices/pipeline-status-resource
 mkdir -p ${WORKING_DIR}
 cp -R source/* ${WORKING_DIR}/.
 cd ${WORKING_DIR}
-
-go get github.com/onsi/ginkgo
-
 glide install
-#go test $(glide nv) -v
-CGO_ENABLED=1 ginkgo -race -r -p "$@"
+go test $(glide nv) -v
