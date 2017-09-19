@@ -40,17 +40,13 @@ func (driver *S3Driver) Start() (status *models.PipelineStatus, err error) {
 	_, err = driver.Load(status)
 	if err == nil {
 		if status.Pipeline != pipelineName {
-			err = fmt.Errorf("State file is already associated with pipeline %s but is trying to be associated with pipeline %s",
+			return status, fmt.Errorf("State file is already associated with pipeline %s but is trying to be associated with pipeline %s",
 				status.Pipeline, pipelineName)
-
-			return nil, err
 		}
 
 		if status.Team != teamName {
-			err = fmt.Errorf("State file is already associated with team %s but is trying to be associated with tea, %s",
+			return status, fmt.Errorf("State file is already associated with team %s but is trying to be associated with tea, %s",
 				status.Team, teamName)
-
-			return nil, err
 		}
 	} else if s3err, ok := err.(awserr.RequestFailure); ok && s3err.StatusCode() == 404 {
 		status = &models.PipelineStatus{}
@@ -63,7 +59,7 @@ func (driver *S3Driver) Start() (status *models.PipelineStatus, err error) {
 
 	_, err = driver.changeAndPersistState(status, models.StateRunning, nil)
 	if err != nil {
-		panic(err)
+		return status, err
 	}
 
 	return
