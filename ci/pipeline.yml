@@ -57,9 +57,9 @@ jobs:
         name: compiled-output/name
         tag: compiled-output/tag
         globs:
-        - compiled-output/check
-        - compiled-output/in
-        - compiled-output/out
+        - compiled-output/assets/check
+        - compiled-output/assets/in
+        - compiled-output/assets/out
 - name: deploy
   plan:
     - aggregate:

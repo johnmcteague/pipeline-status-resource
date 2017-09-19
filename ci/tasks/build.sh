@@ -25,10 +25,11 @@ WORKING_DIR=$GOPATH/src/github.com/pivotalservices/pipeline-status-resource
 mkdir -p ${WORKING_DIR}
 cp -R ${SOURCE_DIR}/* ${WORKING_DIR}/.
 cd ${WORKING_DIR}
+mkdir assets
 glide install
-GOOS=linux GOARCH=amd64 go build -o ${OUTPUT_DIR}/check -ldflags "-X main.VERSION=${DRAFT_VERSION}" check/main.go
-GOOS=linux GOARCH=amd64 go build -o ${OUTPUT_DIR}/in -ldflags "-X main.VERSION=${DRAFT_VERSION}" in/main.go
-GOOS=linux GOARCH=amd64 go build -o ${OUTPUT_DIR}/out -ldflags "-X main.VERSION=${DRAFT_VERSION}" out/main.go
+GOOS=linux GOARCH=amd64 go build -o ${OUTPUT_DIR}/assets/check -ldflags "-X main.VERSION=${DRAFT_VERSION}" check/main.go
+GOOS=linux GOARCH=amd64 go build -o ${OUTPUT_DIR}/assets/in -ldflags "-X main.VERSION=${DRAFT_VERSION}" in/main.go
+GOOS=linux GOARCH=amd64 go build -o ${OUTPUT_DIR}/assets/out -ldflags "-X main.VERSION=${DRAFT_VERSION}" out/main.go
 
 echo ${DRAFT_VERSION} > ${OUTPUT_DIR}/name
 echo ${DRAFT_VERSION} > ${OUTPUT_DIR}/tag
