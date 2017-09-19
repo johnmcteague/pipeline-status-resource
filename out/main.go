@@ -57,6 +57,7 @@ func main() {
 				retryDuration = models.DefaultRetryPeriod
 			}
 
+			fmt.Fprintf(os.Stderr, "Pipeline is currently in %s state\n", status.State)
 			for {
 				if status.State == models.StateReady || status.State == "" {
 					break
