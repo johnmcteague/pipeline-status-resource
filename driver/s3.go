@@ -58,7 +58,7 @@ func (driver *S3Driver) Start() (status *models.PipelineStatus, err error) {
 		status.Team = teamName
 		status.BuildNumber = driver.getPreStartInitialState()
 	} else {
-		status = nil
+		//status = nil
 	}
 
 	_, err = driver.changeAndPersistState(status, models.StateRunning, nil)
