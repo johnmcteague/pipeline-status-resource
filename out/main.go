@@ -56,6 +56,7 @@ func main() {
 			}
 
 			for {
+				fmt.Fprintf(os.Stderr, "state %s", status.State)
 				if status.State == models.StateReady || status.State == "" {
 					break
 				}
