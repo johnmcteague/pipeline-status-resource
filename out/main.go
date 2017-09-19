@@ -25,7 +25,9 @@ func main() {
 		fatal("reading request", err)
 	}
 
-	if driver.IsDebug(request.Source) {
+	debug := driver.IsDebug(request.Source)
+
+	if debug {
 		if tmpFile, err := ioutil.TempFile("/tmp", "outdbg"); err == nil {
 			json.NewEncoder(tmpFile).Encode(request)
 		} else {
@@ -77,6 +79,11 @@ func main() {
 
 	if err != nil {
 		fatal(fmt.Sprintf("%sing pipeline", request.Params.Action), err)
+	}
+
+	if debug {
+		fmt.Fprintf(os.Stderr, "Status: %v\n", status)
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 	}
 
 	json.NewEncoder(os.Stdout).Encode(models.OutResponse{
