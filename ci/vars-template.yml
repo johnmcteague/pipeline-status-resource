@@ -1,0 +1,15 @@
+dev-build-branch: develop
+git-ssh-key: |
+  -----BEGIN RSA PRIVATE KEY-----
+
+  -----END RSA PRIVATE KEY-----
+docker-repository: pivotalservices/pipeline-status-resource
+docker-registry-username:
+docker-registry-password:
+docker-dev-build-tag: develop
+github-token:
+docker-tag: latest
+s3-access-key-id:
+s3-secret-access-key: 
+s3-bucket: jghiloni-psrtest
+s3-region: us-east-2

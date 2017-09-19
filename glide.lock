@@ -1,5 +1,5 @@
-hash: b47eab38ddbd764713da724419a7f9a24cdb855ad1a4075ed57b2f1b74c6cba6
-updated: 2017-09-12T16:03:32.701817464-04:00
+hash: 4e30163f35e48caf34a91157d94cd3f95afda36db5054ff38a1b0f9423eb0547
+updated: 2017-09-19T09:24:48.260028059-07:00
 imports:
 - name: github.com/adammck/venv
   version: 8a9c907a37d36a8f34fa1c5b81aaf80c2554a306
@@ -7,7 +7,7 @@ imports:
   - mock
   - os
 - name: github.com/aws/aws-sdk-go
-  version: c8f58a0af6526ee48a085fc4fd01df0b53025857
+  version: 079cb20e4e0bacb13463971932bd3a59bd3a2a6c
   subpackages:
   - aws
   - aws/awserr

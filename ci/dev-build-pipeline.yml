@@ -1,0 +1,34 @@
+resources:
+- name: source
+  type: git
+  source:
+    uri: git@github.com:pivotalservices/pipeline-status-resource.git
+    branch: {{dev-build-branch}}
+    private_key: {{git-ssh-key}}
+
+- name: docker-registry
+  type: docker-image
+  source:
+    repository: {{docker-repository}}
+    username: {{docker-registry-username}}
+    password: {{docker-registry-password}}
+    tag: {{docker-dev-build-tag}}
+
+jobs:
+- name: test-and-build
+  plan:
+    - aggregate:
+      - get: source
+        trigger: true
+    - task: test
+      file: source/ci/tasks/runTests.yml
+      params:
+        STATUS_TESTING_ACCESS_KEY_ID: {{s3-access-key-id}}
+        STATUS_TESTING_SECRET_ACCESS_KEY: {{s3-secret-access-key}}
+        STATUS_TESTING_BUCKET: {{s3-bucket}}
+        STATUS_TESTING_REGION: {{s3-region}}
+    - task: build
+      file: source/ci/tasks/build.yml
+    - put: docker-registry
+      params:
+        build: compiled-output
