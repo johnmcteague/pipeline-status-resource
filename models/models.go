@@ -42,7 +42,7 @@ type CheckRequest struct {
 type CheckResponse []Version
 
 type Source struct {
-	Debug          bool   `json:"debug"`
+	Debug          string `json:"debug"`
 	Driver         Driver `json:"driver"`
 	InitialVersion string `json:"initial_version"`
 	RequireReady   bool   `json:"require_ready"`

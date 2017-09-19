@@ -2,6 +2,7 @@ package driver
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/adammck/venv"
 	"github.com/aws/aws-sdk-go/aws"
@@ -98,4 +99,10 @@ func FromSource(source models.Source) (Driver, error) {
 	default:
 		return nil, fmt.Errorf("unknown driver: %s", source.Driver)
 	}
+}
+
+func IsDebug(source models.Source) bool {
+	debug, err := strconv.ParseBool(source.Debug)
+
+	return debug && (err == nil)
 }

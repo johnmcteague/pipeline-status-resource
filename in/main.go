@@ -32,7 +32,7 @@ func main() {
 		fatal("reading request", err)
 	}
 
-	if request.Source.Debug {
+	if driver.IsDebug(request.Source) {
 		if tmpFile, err := ioutil.TempFile("/tmp", "indbg"); err == nil {
 			json.NewEncoder(tmpFile).Encode(request)
 		} else {
