@@ -1,5 +1,5 @@
 hash: b47eab38ddbd764713da724419a7f9a24cdb855ad1a4075ed57b2f1b74c6cba6
-updated: 2017-09-19T11:10:41.871750799-07:00
+updated: 2017-09-19T15:16:30.105566201-04:00
 imports:
 - name: github.com/adammck/venv
   version: 8a9c907a37d36a8f34fa1c5b81aaf80c2554a306
@@ -80,17 +80,17 @@ testImports:
   - matchers/support/goraph/util
   - types
 - name: golang.org/x/net
-  version: 66aacef3dd8a676686c7ae3716979581e8b03c47
+  version: 8351a756f30f1297fe94bbf4b767ec589c6ea6d0
   subpackages:
   - html
   - html/atom
   - html/charset
 - name: golang.org/x/sys
-  version: 804a9fee62e3fff93a822aac5f0a7a622da5341d
+  version: b6e1ae21643682ce023deb8d152024597b0e9bb4
   subpackages:
   - unix
 - name: golang.org/x/text
-  version: acd49d43e9b95df46670431bf5c7ae59586daad8
+  version: 1cbadb444a806fd9430d14ad08967ed91da4fa0a
   subpackages:
   - encoding
   - encoding/charmap
