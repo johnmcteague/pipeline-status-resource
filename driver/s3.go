@@ -8,8 +8,6 @@ import (
 	"strconv"
 	"strings"
 
-	"gopkg.in/yaml.v2"
-
 	"github.com/adammck/venv"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -54,7 +52,7 @@ func (driver *S3Driver) Start() (status *models.PipelineStatus, err error) {
 		status.Team = teamName
 		status.BuildNumber = driver.getPreStartInitialState()
 	} else {
-		//status = nil
+		return nil, err
 	}
 
 	_, err = driver.changeAndPersistState(status, models.StateRunning, nil)
@@ -132,6 +130,8 @@ func (driver *S3Driver) Load(status *models.PipelineStatus) (bool, error) {
 		}
 	} else if s3err, ok := err.(awserr.RequestFailure); ok && s3err.StatusCode() == 404 {
 		return true, err
+	} else if err != nil {
+		return false, err
 	}
 
 	return true, nil
