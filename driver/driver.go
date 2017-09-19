@@ -53,7 +53,9 @@ func FromSource(source models.Source) (Driver, error) {
 		}
 
 		svc := s3.New(session.New(awsConfig))
-
+		if source.UseV2Signing {
+			setv2Handlers(svc)
+		}
 		return &S3Driver{
 			InitialVersion: initialVersion,
 

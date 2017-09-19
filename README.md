@@ -40,3 +40,5 @@ the bucket.
 
 * `server_side_encryption`: *Optional.* The server-side encryption algorithm
 used when storing the version object (e.g. `AES256`, `aws:kms`).
+
+* `use_v2_signing`: *Optional.* Use v2 Signature signing default is false.
