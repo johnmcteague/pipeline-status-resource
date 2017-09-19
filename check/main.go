@@ -10,6 +10,8 @@ import (
 	"github.com/pivotalservices/pipeline-status-resource/models"
 )
 
+var VERSION = "local-build"
+
 func main() {
 	var request models.CheckRequest
 	err := json.NewDecoder(os.Stdin).Decode(&request)

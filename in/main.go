@@ -13,6 +13,8 @@ import (
 	"github.com/pivotalservices/pipeline-status-resource/models"
 )
 
+var VERSION = "local-build"
+
 func main() {
 	if len(os.Args) < 2 {
 		println("usage: " + os.Args[0] + " <destination>")
