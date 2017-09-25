@@ -2,6 +2,7 @@ package driver
 
 import (
 	"fmt"
+	"os"
 	"strconv"
 
 	"github.com/adammck/venv"
@@ -40,12 +41,18 @@ func FromSource(source models.Source) (Driver, error) {
 			regionName = "us-east-1"
 		}
 
+		logLevel := aws.LogDebugWithSigning
+
 		awsConfig := &aws.Config{
 			Region:           aws.String(regionName),
 			Credentials:      creds,
 			S3ForcePathStyle: aws.Bool(true),
 			MaxRetries:       aws.Int(maxRetries),
 			DisableSSL:       aws.Bool(source.DisableSSL),
+			LogLevel:         &logLevel,
+			Logger: aws.LoggerFunc(func(args ...interface{}) {
+				fmt.Fprintln(os.Stderr, args...)
+			}),
 		}
 
 		if len(source.Endpoint) != 0 {
