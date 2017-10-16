@@ -41,7 +41,11 @@ func FromSource(source models.Source) (Driver, error) {
 			regionName = "us-east-1"
 		}
 
-		logLevel := aws.LogDebugWithSigning
+		logLevel := aws.LogOff
+
+		if IsDebug(source) {
+			logLevel = aws.LogDebugWithSigning
+		}
 
 		awsConfig := &aws.Config{
 			Region:           aws.String(regionName),
