@@ -66,7 +66,7 @@ state: %s
 
 			key = guid.String()
 
-			creds := credentials.NewStaticCredentials(accessKeyID, secretAccessKey, "")
+			creds := credentials.NewStaticCredentials(accessKeyID, secretAccessKey, sessionToken)
 			awsConfig := &aws.Config{
 				Region:           aws.String(regionName),
 				Credentials:      creds,
@@ -83,6 +83,7 @@ state: %s
 					Key:             key,
 					AccessKeyID:     accessKeyID,
 					SecretAccessKey: secretAccessKey,
+					SessionToken: sessionToken,
 					RegionName:      regionName,
 				},
 				Params: models.OutParams{},

@@ -63,7 +63,7 @@ var _ = Describe("Check", func() {
 
 			key = guid.String()
 
-			creds := credentials.NewStaticCredentials(accessKeyID, secretAccessKey, "")
+			creds := credentials.NewStaticCredentials(accessKeyID, secretAccessKey, sessionToken)
 			awsConfig := &aws.Config{
 				Region:           aws.String(regionName),
 				Credentials:      creds,
@@ -80,6 +80,7 @@ var _ = Describe("Check", func() {
 					Key:             key,
 					AccessKeyID:     accessKeyID,
 					SecretAccessKey: secretAccessKey,
+					SessionToken: sessionToken,
 					RegionName:      regionName,
 				},
 			}

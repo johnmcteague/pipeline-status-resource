@@ -13,6 +13,7 @@ var inPath string
 
 var accessKeyID = os.Getenv("STATUS_TESTING_ACCESS_KEY_ID")
 var secretAccessKey = os.Getenv("STATUS_TESTING_SECRET_ACCESS_KEY")
+var sessionToken = os.Getenv("STATUS_TESTING_SESSION_TOKEN")
 var bucketName = os.Getenv("STATUS_TESTING_BUCKET")
 var regionName = os.Getenv("STATUS_TESTING_REGION")
 
